@@ -1,0 +1,21 @@
+﻿@page "/VendorDashboard"
+@rendermode InteractiveServer
+@inject ProtectedLocalStorage localStorage
+<h3>VendorDashBoardComponent</h3>
+@code {
+    private string VName;
+    private int VId;
+    protected override  async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            var name=await localStorage.GetAsync<string>("Vname");
+            var Id = await localStorage.GetAsync<int>("VId");
+            if (name.Success && Id.Success)
+            {
+                VName = name.Value.ToString();
+                VId = Convert.ToInt32(Id.Value);
+            }
+        }
+    }
+}

@@ -1,0 +1,86 @@
+﻿@page "/login"
+@using WeightTrackerUI.Components.RequestModel
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@rendermode InteractiveServer
+@inject HttpClient Httpclient
+@inject ProtectedLocalStorage localStorage
+@inject NavigationManager Navigation
+
+@using Microsoft.AspNetCore.Components
+
+<h3>WellCome</h3>
+
+
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="card shadow" style="width: 22rem;">
+        <div class="card-body">
+            <h5 class="card-title mb-4 text-center">Login</h5>
+            <form>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email address</label>
+                    <input type="text" class="form-control" id="email" placeholder="Enter email" @bind="@_userEmail">
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="text" class="form-control" id="password" placeholder="Password" @bind="@password">
+                </div>
+                
+                @if(sucess)
+                {
+                    <h5 class="text-success">@loginMEssage</h5>
+                }
+                else
+                {
+                    <h5 class="text-warning">@loginMEssage</h5>
+                }
+
+                <button type="button" class="btn btn-primary w-100" @onclick="@Login">Login</button>
+            </form>
+        </div>
+    </div>
+</div>
+<h5 class="text-success">@loginMEssage</h5>
+
+
+@code {
+    private string _userEmail = string.Empty;
+    private string password = string.Empty;
+    private string loginMEssage = string.Empty;
+    List<Vendor> vendors = new List<Vendor>();
+    private bool sucess = false;
+    private async Task Login()
+    {
+        var loginRequest = new LoginRequest
+        {
+            email = _userEmail,
+            password = password
+        };
+        loginMEssage = "";
+        try
+        {
+            var response = await Httpclient.PostAsJsonAsync("https://localhost:7123/api/Login/login", loginRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<Vendor>();
+                await localStorage.SetAsync("Vname",result.VendorName);
+                await localStorage.SetAsync("VId", result.VendorId);
+                loginMEssage = $"Wellcome {result.VendorName}";
+                Navigation.NavigateTo("/VendorDashboard");
+
+                sucess = true;
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                loginMEssage = "UnAuthorize Credentials.";
+            }
+            else
+            {
+                loginMEssage = $"{response.StatusCode} : {response.ReasonPhrase}";
+            }
+        }
+        catch (Exception ex)
+        {
+            loginMEssage = $"API Error: {ex.Message}";
+        }      
+    }
+}
