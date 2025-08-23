@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using WeightTrackerUI.Components;
+using WeightTrackerUI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,8 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<ProtectedLocalStorage>();
 builder.Services.AddScoped<User>();
+
+builder.Services.AddScoped<UserServices>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

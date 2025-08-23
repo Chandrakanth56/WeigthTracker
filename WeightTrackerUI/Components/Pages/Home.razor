@@ -1,7 +1,105 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
-
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
+<div class="container-fluid bg-light min-vh-100 d-flex flex-column">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                <i class="bi bi-truck text-primary me-2"></i>
+                Weight Tracker
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#features">Benefits</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#how">How It Works</a></li>
+                </ul>
+                <div class="ms-3">
+                    <a href="/login" class="btn btn-primary btn-sm">Get Started</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <section class="container my-5 flex-grow-1">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="fw-bold display-5 mb-3">
+                    Simple. Secure. Transparent.
+                </h1>
+                <p class="lead text-muted mb-4">
+                    With Weight Tracker, farmers and vendors can record daily weights digitally,
+                    avoid manual errors, and build trust through clear records.
+                </p>
+                <div>
+                    <a href="#signup" class="btn btn-primary btn-lg me-2">Start Tracking Today</a>
+                    <a href="#features" class="btn btn-outline-dark btn-lg">Learn More</a>
+                </div>
+            </div>
+            <div class="col-lg-6 text-center mt-4 mt-lg-0">
+                <img src="/weightTracker.png"
+                     alt="Weight Tracker" class="img-fluid rounded shadow" />
+            </div>
+        </div>
+    </section>
+    <section id="features" class="bg-white py-5 border-top border-bottom">
+        <div class="container">
+            <h2 class="fw-bold text-center mb-5">Why Choose Weight Tracker?</h2>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-people fs-2 text-primary mb-3"></i>
+                            <h5 class="card-title">For Farmers</h5>
+                            <p class="card-text text-muted">
+                                Keep track of your daily weights, access your history anytime, and ensure your hard work is recorded fairly.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-bar-chart-line fs-2 text-primary mb-3"></i>
+                            <h5 class="card-title">For Vendors</h5>
+                            <p class="card-text text-muted">
+                                Manage multiple farmers easily, get instant access to their data, and grow your business with confidence.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-shield-lock fs-2 text-primary mb-3"></i>
+                            <h5 class="card-title">For Everyone</h5>
+                            <p class="card-text text-muted">
+                                Enjoy peace of mind knowing your data is secure, transparent, and always available when you need it.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section id="how" class="container py-5">
+        <h2 class="fw-bold text-center mb-4">How It Works</h2>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <ol class="list-group list-group-numbered">
+                    <li class="list-group-item">Farmers log in and record their daily weights.</li>
+                    <li class="list-group-item">Vendors instantly see the weights from their farmers.</li>
+                    <li class="list-group-item">Data is stored securely and transparently for both sides.</li>
+                </ol>
+            </div>
+        </div>
+    </section>
+    <section id="signup" class="bg-primary text-white text-center py-5">
+        <h2 class="fw-bold mb-3">Ready to Get Started?</h2>
+        <p class="mb-4">Join farmers and vendors who trust Weight Tracker every day.</p>
+        <a href="/login" class="btn btn-light btn-lg">Sign Up Now</a>
+    </section>
+    <footer class="py-4 text-center text-muted small bg-white border-top">
+        © @DateTime.Now.Year Weight Tracker · Making weight management easy for farmers & vendors
+    </footer>
+</div>

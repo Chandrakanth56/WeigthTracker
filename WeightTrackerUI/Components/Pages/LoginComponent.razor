@@ -5,11 +5,7 @@
 @inject HttpClient Httpclient
 @inject ProtectedLocalStorage localStorage
 @inject NavigationManager Navigation
-
-@using Microsoft.AspNetCore.Components
-
-<h3>WellCome</h3>
-
+@inject UserServices users
 
 <div class="container d-flex justify-content-center align-items-center vh-100">
     <div class="card shadow" style="width: 22rem;">
@@ -62,8 +58,8 @@
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<Vendor>();
-                await localStorage.SetAsync("Vname",result.VendorName);
-                await localStorage.SetAsync("VId", result.VendorId);
+                users.VendorId = result.VendorId;
+                users.VendorName = result.VendorName;
                 loginMEssage = $"Wellcome {result.VendorName}";
                 Navigation.NavigateTo("/VendorDashboard");
 

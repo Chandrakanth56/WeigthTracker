@@ -1,0 +1,127 @@
+﻿@page "/VendorDashboard/FarmerDetails"
+@inject HttpClient Http
+
+@if (farmer == null)
+{
+    if(!string.IsNullOrEmpty(ExceptionMessage))
+    {
+        <div class="alert-warning">@ExceptionMessage</div>
+    }
+    else
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Loading farmer details...</p>
+        </div>
+    }  
+}
+else
+{
+    <div class="container py-5">
+        <div class="row justify-content-center mb-4">
+            <div class="col-lg-6 col-md-8">
+                <div class="card shadow-lg border-0 text-center">
+                    <div class="card-body">
+                        <div class="position-relative d-inline-block mb-3">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow"
+                                 style="width: 120px; height: 120px; font-size: 40px; font-weight: bold;">
+                                @FirstLatter
+                            </div>
+                            <span class="position-absolute bottom-0 end-0 bg-success rounded-circle border border-white"
+                                  style="width: 24px; height: 24px;"></span>
+                        </div>
+
+                        <h3 class="fw-bold mb-1">@farmer.FarmerName</h3>
+                        <p class="text-muted mb-2">ID: @farmer.FarmerId</p>
+                        <p class="text-muted mb-0"><i class="fas fa-envelope me-2"></i>@farmer.FarmerEmail</p>
+                        <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button class="btn btn-primary">
+                                <i class="fas fa-comment-dots me-2"></i> Message
+                            </button>
+                            <button class="btn btn-outline-secondary">
+                                <i class="fas fa-pencil-alt me-2"></i> Edit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <h5 class="fw-bold border-bottom pb-2 mb-4">Farmer Information</h5>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <small class="text-muted">Full Name</small>
+                                <p class="fw-semibold mb-0">@farmer.FarmerName</p>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Member Since</small>
+                                @* <p class="fw-semibold mb-0">@farmer.MemberSince.ToString("MMM dd, yyyy")</p> *@
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <small class="text-muted d-flex align-items-center">
+                                    <i class="fas fa-phone text-success me-2"></i>Phone
+                                </small>
+                                @* <p class="fw-semibold mb-0">@farmer.Phone</p> *@
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-flex align-items-center">
+                                    <i class="fas fa-map-marker-alt text-danger me-2"></i>Address
+                                </small>
+                                @* <p class="fw-semibold mb-0">@farmer.Address</p> *@
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+
+}
+
+@code {
+    [Parameter] public int FarmerId { get; set; }
+    private Farmer? farmer;
+    private string FirstLatter => string.IsNullOrEmpty(farmer?.FarmerName)
+                               ? ""
+                               : farmer.FarmerName.Substring(0, 1).ToUpper();
+    private string ExceptionMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        farmer = await GetFarmerByIdAsync();
+        await Task.Delay(2000);
+        if (farmer != null)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task<Farmer?> GetFarmerByIdAsync()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<Farmer>(
+                $"https://localhost:7123/api/Vendors/GetFarmerFullDetails?FarmerId={FarmerId}"
+            );
+            return response;
+        }
+        catch (Exception ex)
+        {
+            ExceptionMessage = $"{ex.Message}";
+            return null;
+        }
+    }
+}
