@@ -28,16 +28,91 @@ namespace WeigthTrackerApplication.Controllers
             if (login == null || string.IsNullOrEmpty(login.Email) || string.IsNullOrEmpty(login.Password))
                 return BadRequest("Email and password are required.");
 
-            var user = _context.Vendors
-                .FirstOrDefault(u => u.VendorEmail == login.Email && u.PasswordHash == login.Password);
+            var vendor = _context.Vendors
+                .FirstOrDefault(v => v.VendorEmail == login.Email && v.PasswordHash == login.Password);
 
-            if (user == null)
-                return Unauthorized("Invalid credentials.");
+            if (vendor != null)
+            {
+                var claims = new[]
+                {
+            new Claim(ClaimTypes.Name, vendor.VendorName),
+            new Claim(ClaimTypes.Role, "Vendor"),
+            new Claim("VendorId", vendor.VendorId.ToString())
+        };
+
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+                var token = new JwtSecurityToken(
+                    issuer: _config["Jwt:Issuer"],
+                    audience: _config["Jwt:Audience"],
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddHours(1),
+                    signingCredentials: creds
+                );
+
+                return Ok(new
+                {
+                    token = new JwtSecurityTokenHandler().WriteToken(token),
+                    vendorId = vendor.VendorId,
+                    vendorName = vendor.VendorName,
+                    role = "Vendor"
+                });
+            }
+
+            // Check farmer if not vendor
+            var farmer = _context.Farmers
+                .FirstOrDefault(f => f.FarmerEmail == login.Email && f.PassswordHAsh == login.Password);
+
+            if (farmer != null)
+            {
+                var claims = new[]
+                {
+            new Claim(ClaimTypes.Name, farmer.FarmerName),
+            new Claim(ClaimTypes.Role, "Farmer"),
+            new Claim("FarmerId", farmer.FarmerId.ToString())
+                };
+
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+                var token = new JwtSecurityToken(
+                    issuer: _config["Jwt:Issuer"],
+                    audience: _config["Jwt:Audience"],
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddHours(1),
+                    signingCredentials: creds
+                );
+
+                return Ok(new
+                {
+                    token = new JwtSecurityTokenHandler().WriteToken(token),
+                    farmerId = farmer.FarmerId,
+                    farmerName = farmer.FarmerName,
+                    role = "Farmer"
+                });
+            }
+
+            return Unauthorized("Invalid credentials.");
+        }
+
+        [HttpPost("farmer")]
+        public IActionResult FarmerLogin([FromBody] LoginRequest login)
+        {
+            if (login == null || string.IsNullOrEmpty(login.Email) || string.IsNullOrEmpty(login.Password))
+                return BadRequest("Email and password are required.");
+
+            var farmer = _context.Farmers
+                .FirstOrDefault(f => f.FarmerEmail == login.Email && f.PassswordHAsh == login.Password);
+
+            if (farmer == null)
+                return Unauthorized("Invalid farmer credentials.");
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.Name, user.VendorName),
-                new Claim("VendorId", user.VendorId.ToString())
+            new Claim(ClaimTypes.Name, farmer.FarmerName),
+            new Claim(ClaimTypes.Role, "Farmer"),
+            new Claim("FarmerId", farmer.FarmerId.ToString())
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
@@ -54,8 +129,9 @@ namespace WeigthTrackerApplication.Controllers
             return Ok(new
             {
                 token = new JwtSecurityTokenHandler().WriteToken(token),
-                vendorId = user.VendorId,
-                vendorName = user.VendorName
+                farmerId = farmer.FarmerId,
+                farmerName = farmer.FarmerName,
+                role = "Farmer"
             });
         }
     }

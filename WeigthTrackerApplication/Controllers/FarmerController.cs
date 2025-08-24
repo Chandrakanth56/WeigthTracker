@@ -23,7 +23,7 @@ namespace WeigthTrackerApplication.Controllers
         }
 
         [HttpGet("GetTheirDetails")]
-        public ActionResult<List<Farmer>> GetAllFarmer(int farmerID)
+        public ActionResult<List<Farmer>> GetFarmer(int farmerID)
         {
             var far = _context.Farmers.Where(f => f.FarmerId == farmerID).Select(s =>
                 new Farmer
@@ -53,6 +53,16 @@ namespace WeigthTrackerApplication.Controllers
         {
             List<Weight> weight = _context.Weights.Where(w=>w.FarmerId==FarmerID).ToList();
             return weight;
+        }
+
+        [HttpGet("GetTotalWeight")]
+        public ActionResult<int> GetTotalWeight(int farmerId)
+        {
+            var totalWeight = _context.Weights
+                .Where(w => w.FarmerId == farmerId)
+                .Sum(w => w.Weights);
+
+            return Ok(totalWeight);
         }
     }
 }
