@@ -1,6 +1,6 @@
-﻿@page "/VendorDashboard/FarmerDetails"
+﻿@page "/VendorDashboard/FarmerDetails/{token}"
 @inject HttpClient Http
-
+@inject ITokenService TokenService
 @if (farmer == null)
 {
     if(!string.IsNullOrEmpty(ExceptionMessage))
@@ -92,7 +92,8 @@ else
 }
 
 @code {
-    [Parameter] public int FarmerId { get; set; }
+    [Parameter] public string token { get; set; }
+    private int FarmerId;
     private Farmer? farmer;
     private string FirstLatter => string.IsNullOrEmpty(farmer?.FarmerName)
                                ? ""
@@ -101,6 +102,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        FarmerId = Convert.ToInt32(TokenService.GetId(token.ToString()));
         farmer = await GetFarmerByIdAsync();
         await Task.Delay(2000);
         if (farmer != null)

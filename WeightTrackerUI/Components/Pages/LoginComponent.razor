@@ -6,6 +6,7 @@
 @inject ProtectedLocalStorage localStorage
 @inject NavigationManager Navigation
 @inject UserServices users
+@inject ProtectedSessionStorage sessionStorage
 
 <div class="container d-flex justify-content-center align-items-center vh-100">
     <div class="card shadow" style="width: 22rem;">
@@ -60,6 +61,8 @@
                 var result = await response.Content.ReadFromJsonAsync<Vendor>();
                 users.VendorId = result.VendorId;
                 users.VendorName = result.VendorName;
+                await sessionStorage.SetAsync("VendorId", result.VendorId);
+                await sessionStorage.SetAsync("VendorName", result.VendorName);
                 loginMEssage = $"Wellcome {result.VendorName}";
                 Navigation.NavigateTo("/VendorDashboard");
 

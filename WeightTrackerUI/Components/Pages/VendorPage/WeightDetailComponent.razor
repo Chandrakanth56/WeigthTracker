@@ -1,4 +1,6 @@
-﻿@inject HttpClient Http
+﻿@page "/VendorDashboard/WeightDetails/{token1}/{token2}"
+@inject HttpClient Http
+@inject ITokenService TokenService
 
 <style>
     body {
@@ -98,15 +100,19 @@ else
 
 
 @code {
-    [Parameter] public int FarmerId { get; set; }
-    [Parameter] public int VendorId { get; set; }
+    [Parameter] public string token1 { get; set; } = string.Empty;
+    [Parameter] public string token2 { get; set; } = string.Empty;
     [Parameter] public string FarmerName { get; set; }
+    private int FarmerId;
+    private int VendorId;
 
     private List<Weight> farmerWeights;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
+        FarmerId = Convert.ToInt32(TokenService.GetId(token1));
+        VendorId = Convert.ToInt32(TokenService.GetId(token2));
         await LoadWeights();
     }
 
