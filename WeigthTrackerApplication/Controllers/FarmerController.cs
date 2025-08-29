@@ -31,27 +31,43 @@ namespace WeigthTrackerApplication.Controllers
                     FarmerId = s.FarmerId,
                     FarmerName = s.FarmerName,
                     FarmerEmail = s.FarmerEmail,
+                    VendorId = s.VendorId,
                     PassswordHAsh = s.PassswordHAsh,
                 }).FirstOrDefault();
             return Ok(far);
         }
 
-        [HttpPost]
-        public ActionResult<List<Weight>> AddWieght([FromBody] Weight model, int FarmerId)
+        [HttpPost("AddWeights")]
+        public ActionResult<List<Weight>> AddWeights([FromBody] List<Weight> models, int FarmerId)
         {
-            var weight = new Weight()
+            if (models == null || !models.Any())
+                return BadRequest("No weights provided");
+
+            foreach (var model in models)
             {
-                FarmerId = FarmerId,
-                Weights = model.Weights,
-            };
-            _context.Add(weight);
+                var weight = new Weight
+                {
+                    FarmerId = FarmerId,
+                    Weights = model.Weights,
+                    Timestamp = DateTime.Now
+                };
+                _context.Add(weight);
+            }
+
             _context.SaveChanges();
-            return Ok(weight);
+            return Ok(models);
         }
+
+
         [HttpGet]
         public List<Weight> GetWeightsbyID(int FarmerID)
         {
-            List<Weight> weight = _context.Weights.Where(w=>w.FarmerId==FarmerID).ToList();
+            List<Weight> weight = _context.Weights
+                .Where(w => w.FarmerId == FarmerID)
+                .OrderByDescending(w => w.Timestamp) 
+                .Take(5)                            
+                .ToList();
+
             return weight;
         }
 
