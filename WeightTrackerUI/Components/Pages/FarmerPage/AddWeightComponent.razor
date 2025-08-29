@@ -1,0 +1,198 @@
+﻿@page "/AddWeight/{token}"
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Web
+@inject HttpClient Http
+@inject ITokenService TokenService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@rendermode InteractiveServer
+
+<div class="container mt-5">
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-header bg-gradient text-white rounded-top-4" style="background: linear-gradient(90deg,#0d6efd,#6610f2);">
+            <h4 class="mb-0 text-secondary"><i class="bi bi-basket2-fill me-2"></i> Add Weights</h4>
+        </div>
+
+        <div class="card-body p-4">
+
+            <p class="text-muted small mb-3">
+                Enter weights in kilograms. Use
+                <span class="badge bg-success"><i class="bi bi-plus-lg"></i></span> to add a row,
+                <span class="badge bg-danger"><i class="bi bi-trash3"></i></span> to remove it.
+                Press <kbd>Enter</kbd> to quickly add another row.
+            </p>
+
+            @if (rows.Count == 0)
+            {
+                <div class="text-center py-4">
+                    <button type="button" class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm" @onclick="AddFirstRow">
+                        <i class="bi bi-plus-circle me-2"></i> Add First Weight
+                    </button>
+                </div>
+            }
+            else
+            {
+                @for (int i = 0; i < rows.Count; i++)
+                {
+                    var index = i; 
+                                   <div class="d-flex gap-2 align-items-center mb-3">
+                                       <div class="input-group flex-grow-1 shadow-sm">
+                                           <span class="input-group-text fw-bold">Kg</span>
+                                           <input type="number"
+                                                  step="0.1"
+                                                  class="form-control"
+                                                  placeholder="Weight #@(index + 1)"
+                                                  @bind="rows[index].Value"
+                                                  @onkeydown="(e) => OnKeyDown(e, index)" />
+                                       </div>
+
+                        <button type="button"
+                                class="btn btn-outline-success rounded-circle"
+                                title="Add row below"
+                                disabled="@(rows[index].Value == null || rows[index].Value <= 0)"
+                                @onclick="() => AddRowAfter(index)">
+                            <i class="bi bi-plus-lg"></i>Add Row
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-danger rounded-circle"
+                                title="Remove row"
+                                @onclick="() => RemoveRow(index)">
+                            <i class="bi bi-trash3"></i>Delete Row
+                        </button>
+                    </div>
+                }
+
+            }
+
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <small class="text-muted">Rows: <strong>@rows.Count</strong></small>
+
+                <div>
+                    <button type="button" class="btn btn-outline-secondary me-2 rounded-pill"
+                            @onclick="ClearAll" disabled="@(rows.Count == 0)">
+                        <i class="bi bi-x-circle me-1"></i> Clear
+                    </button>
+
+                    <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm"
+                            @onclick="SaveAllAsync"
+                            disabled="@(rows.Count == 0 || !rows.Any(r => r.Value > 0))">
+                        <i class="bi bi-cloud-upload me-1"></i> Save All
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <div class="@MessageClass mt-4 p-3 rounded shadow-sm">
+                    @((MarkupString)Message)
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string token { get; set; }
+
+    private int FarmerId;
+    private List<Row> rows = new();
+    private string Message;
+    private string MessageClass;
+
+    private class Row { public double? Value { get; set; } }
+
+    protected override void OnInitialized()
+    {
+        FarmerId = Convert.ToInt32(TokenService.GetId(token));
+        rows.Add(new Row()); // Start with one row
+    }
+
+    private void AddFirstRow() => rows.Add(new Row());
+
+    private void AddRowAfter(int index)
+    {
+        if (rows[index].Value == null || rows[index].Value <= 0)
+        {
+            SetMessage("Please enter a valid weight before adding a new row.", "alert alert-warning");
+            return;
+        }
+
+        rows.Insert(index + 1, new Row());
+        ClearMessage();
+    }
+
+    private void RemoveRow(int index)
+    {
+        if (index >= 0 && index < rows.Count)
+            rows.RemoveAt(index);
+
+        if (rows.Count == 0)
+            rows.Add(new Row());
+    }
+
+    private void ClearAll()
+    {
+        rows.Clear();
+        rows.Add(new Row());
+        ClearMessage();
+    }
+
+    private async Task SaveAllAsync()
+    {
+        var weightsToSave = rows
+            .Where(r => r.Value.HasValue && r.Value.Value > 0)
+            .Select(r => new Weight { FarmerId = FarmerId, weights = r.Value.Value })
+            .ToList();
+
+        if (!weightsToSave.Any())
+        {
+            SetMessage("No valid weights to save.", "alert alert-warning");
+            return;
+        }
+
+        try
+        {
+            var resp = await Http.PostAsJsonAsync(
+                $"https://localhost:7123/api/Farmer/AddWeights?FarmerId={FarmerId}",
+                weightsToSave);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                SetMessage("Weights saved successfully.", "alert alert-success");
+                rows.Clear();
+                rows.Add(new Row());
+            }
+            else
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                SetMessage($"Save failed: {resp.StatusCode} — {err}", "alert alert-danger");
+            }
+        }
+        catch (Exception ex)
+        {
+            SetMessage($"Save failed: {ex.Message}", "alert alert-danger");
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e, int index)
+    {
+        if (e.Key == "Enter")
+        {
+            AddRowAfter(index);
+        }
+    }
+
+    private void SetMessage(string text, string css)
+    {
+        Message = text;
+        MessageClass = css;
+    }
+
+    private void ClearMessage()
+    {
+        Message = null;
+        MessageClass = null;
+    }
+}
