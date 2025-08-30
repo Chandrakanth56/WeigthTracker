@@ -1,0 +1,147 @@
+﻿@page "/WeightDetails/{token}"
+@inject HttpClient Http
+@inject ITokenService TokenServices
+@rendermode InteractiveServer
+<h3>Weights</h3>
+
+@if (isLoading)
+{
+    <div class="spinner-border text-primary"></div>
+}
+
+else
+{
+    <div class="card shadow-sm p-3 mb-4 bg-white rounded">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label fw-bold">From Date</label>
+                    <InputDate TValue="DateOnly?"
+                               @bind-Value="fromDate"
+                               class="form-control" />
+                </div>
+                <div class="col">
+                    <label class="form-label fw-bold">To Date</label>
+                    <InputDate TValue="DateOnly?"
+                               @bind-Value="toDate"
+                               class="form-control" />
+                </div>
+                <div class="col d-flex align-items-end">
+                    <button class="btn btn-primary" @onclick="ApplyFilter">Filter</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    @if (weightList?.Any() == false)
+    {
+        <p>No weight records found.</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Weight ID</th>
+                    <th>Date</th>
+                    <th>Weight</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in weightList)
+                {
+                    <tr>
+                        <td>@w.weightId</td>
+                        <td>@w.timestamp?.ToString("dd MMM yyyy hh:mm tt")</td>
+                        <td>@w.weights</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="d-flex justify-content-between mt-3">
+            <button class="btn btn-secondary" @onclick="PreviousPage" disabled="@(_pageNumber <= 1)">Previous</button>
+            <span>Page @_pageNumber of @_totalPages</span>
+            <button class="btn btn-secondary" @onclick="NextPage" disabled="@(_pageNumber >= _totalPages)">Next</button>
+        </div>
+    }
+   
+}
+
+@code {
+    [Parameter] public string token { get; set; }
+
+    private int FarmerId;
+    private List<Weight> weightList = new();
+    private bool isLoading = true;
+
+    private int _pageNumber = 1;
+    private int _pageSize = 10;
+    private int _totalPages;
+
+    private DateOnly? fromDate;
+    private DateOnly? toDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        FarmerId = Convert.ToInt32(TokenServices.GetId(token));
+        await LoadWeights();
+    }
+
+    private async Task LoadWeights()
+    {
+        try
+        {
+            isLoading = true;
+
+            string url = $"https://localhost:7123/api/Farmer/GetPaginatedWeights?farmerId={FarmerId}&pageNumber={_pageNumber}&pageSize={_pageSize}";
+
+            if (fromDate.HasValue && toDate.HasValue)
+            {
+                url += $"&startDate={fromDate:yyyy-MM-dd}&endDate={toDate:yyyy-MM-dd}";
+            }
+
+            Console.WriteLine($"Requesting: {url}");
+
+            var response = await Http.GetFromJsonAsync<PaginatedResponse<Weight>>(url);
+
+            if (response != null)
+            {
+                weightList = response.Data;
+                _totalPages = response.TotalPages;
+            }
+            isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching paginated weights: {ex.Message}");
+            isLoading = false;
+        }
+    }
+
+
+    private async Task ApplyFilter()
+    {
+        _pageNumber = 1;
+        await LoadWeights();
+    }
+
+    private async Task NextPage()
+    {
+        if (_pageNumber < _totalPages)
+        {
+            _pageNumber++;
+            await LoadWeights();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (_pageNumber > 1)
+        {
+            _pageNumber--;
+            await LoadWeights();
+        }
+    }
+}
