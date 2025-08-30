@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using WeigthTrackerApplication.Models;
 using System.Data.SqlClient;
 using System.Data;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Authorization;
 
 namespace WeigthTrackerApplication.Controllers
@@ -14,128 +12,180 @@ namespace WeigthTrackerApplication.Controllers
     [ApiController]
     public class VendorsController : ControllerBase
     {
-        private readonly ILogger<VendorsController> _logger; 
+        private readonly ILogger<VendorsController> _logger;
         private readonly WightListContext _wightListContext;
         private readonly IConfiguration _configuration;
-        
-       
+
         public VendorsController(ILogger<VendorsController> logger, WightListContext wightListContext, IConfiguration configuration)
         {
             _logger = logger;
-            _wightListContext= wightListContext;
+            _wightListContext = wightListContext;
             _configuration = configuration;
         }
+
         [HttpGet("GetVendorName")]
         public ActionResult<List<Vendor>> GetName(int vendorId)
         {
-            var vendor = _wightListContext.Vendors.Where(v => v.VendorId ==vendorId).Select(v =>
-            new Vendor { 
-            
-                VendorId = v.VendorId,
-                 VendorName = v.VendorName,
-            });
-            if(vendor==null)
+            try
             {
-                return NotFound("Vendor is not Found in the database");
+                var vendor = _wightListContext.Vendors
+                    .Where(v => v.VendorId == vendorId)
+                    .Select(v => new Vendor
+                    {
+                        VendorId = v.VendorId,
+                        VendorName = v.VendorName,
+                    })
+                    .ToList();
+
+                if (vendor == null || !vendor.Any())
+                {
+                    return NotFound("Vendor not found in the database");
+                }
+
+                return Ok(vendor);
             }
-            return Ok(vendor);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while fetching vendor details for VendorId: {vendorId}", vendorId);
+                return StatusCode(500, "An error occurred while fetching vendor details.");
+            }
         }
+
         [HttpGet("GetAllFarmer")]
         public ActionResult<List<Farmer>> GetAllFarmer(int VendorId)
         {
-            List<Farmer> farmer = new List<Farmer>();
-            var cs = _configuration.GetConnectionString("MyDbConnection");
-            using (SqlConnection con = new SqlConnection(cs))
+            try
             {
-                string query = "spGetNameOfFarmer";
-                SqlCommand cmd = new SqlCommand(query,con);
-                cmd.Parameters.AddWithValue("@VendorId", VendorId);
-                cmd.CommandType = CommandType.StoredProcedure;
-                con.Open();
-                SqlDataReader Dr= cmd.ExecuteReader();
-                while(Dr.Read())
+                List<Farmer> farmer = new List<Farmer>();
+                var cs = _configuration.GetConnectionString("MyDbConnection");
+
+                using (SqlConnection con = new SqlConnection(cs))
                 {
-                    Farmer far= new Farmer();
-                    far.FarmerId = Convert.ToInt32(Dr["FarmerID"]);
-                    far.FarmerName = Dr["FarmerName"].ToString();
-                    farmer.Add(far);
+                    string query = "spGetNameOfFarmer";
+                    SqlCommand cmd = new SqlCommand(query, con);
+                    cmd.Parameters.AddWithValue("@VendorId", VendorId);
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    con.Open();
+                    SqlDataReader Dr = cmd.ExecuteReader();
+                    while (Dr.Read())
+                    {
+                        Farmer far = new Farmer
+                        {
+                            FarmerId = Convert.ToInt32(Dr["FarmerID"]),
+                            FarmerName = Dr["FarmerName"].ToString()
+                        };
+                        farmer.Add(far);
+                    }
                 }
-               
+                return Ok(farmer);
             }
-            return Ok(farmer);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while fetching farmers for VendorId: {VendorId}", VendorId);
+                return StatusCode(500, "An error occurred while fetching farmers.");
+            }
         }
+
         [HttpPost]
         public ActionResult<List<Farmer>> AddFarmer([FromBody] Farmer model)
         {
-            var farmers = new Farmer()
+            try
             {
-                VendorId = model.VendorId,
-                FarmerName = model.FarmerName,
-                FarmerEmail = model.FarmerEmail,
-                PassswordHAsh = model.PassswordHAsh,
-                
-            };
-            _wightListContext.Farmers.Add(farmers);
-            _wightListContext.SaveChanges();
-            return Ok(farmers);
+                var farmers = new Farmer()
+                {
+                    VendorId = model.VendorId,
+                    FarmerName = model.FarmerName,
+                    FarmerEmail = model.FarmerEmail,
+                    PassswordHAsh = model.PassswordHAsh,
+                };
+
+                _wightListContext.Farmers.Add(farmers);
+                _wightListContext.SaveChanges();
+                return Ok(farmers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while adding new farmer");
+                return StatusCode(500, "An error occurred while adding the farmer.");
+            }
         }
 
         [HttpGet("GetFarmerWeights")]
-        public ActionResult<List<Weight>> GetFarmerWeights(int FarmerID,int VendorId)
+        public ActionResult<List<Weight>> GetFarmerWeights(int FarmerID, int VendorId)
         {
-            List<Weight> weights = new List<Weight>();
-            string cs = _configuration.GetConnectionString("MyDbConnection");
-
-            using (SqlConnection con = new SqlConnection(cs))
+            try
             {
-                using (SqlCommand cmd = new SqlCommand("spEachFarmerRecordforVendor", con))
+                List<Weight> weights = new List<Weight>();
+                string cs = _configuration.GetConnectionString("MyDbConnection");
+
+                using (SqlConnection con = new SqlConnection(cs))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@FarmerID", FarmerID);
-                    cmd.Parameters.AddWithValue("@VendorId", VendorId);
-                    con.Open(); 
-
-                    using (SqlDataReader dr = cmd.ExecuteReader()) 
+                    using (SqlCommand cmd = new SqlCommand("spEachFarmerRecordforVendor", con))
                     {
-                        while (dr.Read())
-                        {
-                            Weight weight = new Weight()
-                            {
-                                Weights = Convert.ToDouble(dr["Weights"]),
-                                Timestamp = dr["Timestamp"] != DBNull.Value
-                                ? Convert.ToDateTime(dr["Timestamp"])
-                                : null,
-                            };
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@FarmerID", FarmerID);
+                        cmd.Parameters.AddWithValue("@VendorId", VendorId);
+                        con.Open();
 
-                            weights.Add(weight);
+                        using (SqlDataReader dr = cmd.ExecuteReader())
+                        {
+                            while (dr.Read())
+                            {
+                                Weight weight = new Weight()
+                                {
+                                    Weights = Convert.ToDouble(dr["Weights"]),
+                                    Timestamp = dr["Timestamp"] != DBNull.Value
+                                        ? Convert.ToDateTime(dr["Timestamp"])
+                                        : null,
+                                };
+                                weights.Add(weight);
+                            }
                         }
                     }
                 }
-            }
 
-            return Ok(weights); 
+                return Ok(weights);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while fetching weights for FarmerID: {FarmerID}, VendorId: {VendorId}", FarmerID, VendorId);
+                return StatusCode(500, "An error occurred while fetching weights.");
+            }
         }
+
         [HttpGet("GetFArmerFullDetails")]
         public ActionResult<List<Farmer>> GetFUllDetailsOfFarmer(int FarmerId)
         {
-            if(FarmerId<=0)
+            try
             {
-                return BadRequest("Enter the valid FarmerId");
+                if (FarmerId <= 0)
+                {
+                    return BadRequest("Enter a valid FarmerId");
+                }
+
+                var farmer = _wightListContext.Farmers.FirstOrDefault(f => f.FarmerId == FarmerId);
+                if (farmer == null)
+                {
+                    _logger.LogWarning("Farmer with FarmerId: {FarmerId} not found", FarmerId);
+                    return NotFound("Farmer not found");
+                }
+
+                var far = new Farmer()
+                {
+                    FarmerId = farmer.FarmerId,
+                    FarmerName = farmer.FarmerName,
+                    FarmerEmail = farmer.FarmerEmail,
+                    VendorId = farmer.VendorId,
+                };
+
+                return Ok(far);
             }
-            var farmer=_wightListContext.Farmers.Where(f=>f.FarmerId == FarmerId).FirstOrDefault();
-            if(farmer == null)
+            catch (Exception ex)
             {
-                _logger.LogError("Farmer with this is not found in the Database");
-                return NotFound("Famernot found Enter");
+                _logger.LogError(ex, "Error while fetching full details for FarmerId: {FarmerId}", FarmerId);
+                return StatusCode(500, "An error occurred while fetching farmer details.");
             }
-            var far = new Farmer()
-            {
-                FarmerId = farmer.FarmerId,
-                FarmerName=farmer.FarmerName,
-                FarmerEmail=farmer.FarmerEmail,
-                VendorId=farmer.VendorId,
-            };
-            return Ok(far);
         }
     }
 }
