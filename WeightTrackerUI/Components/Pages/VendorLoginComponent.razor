@@ -64,7 +64,7 @@
                 await sessionStorage.SetAsync("VendorId", result.VendorId);
                 await sessionStorage.SetAsync("VendorName", result.VendorName);
                 loginMEssage = $"Wellcome {result.VendorName}";
-                Navigation.NavigateTo("/VendorDashboard");
+                Navigation.NavigateTo("/vendordashboard");
 
                 sucess = true;
             }

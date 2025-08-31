@@ -3,42 +3,45 @@
 @inject ITokenService TokenService
 @if (farmer == null)
 {
-    if(!string.IsNullOrEmpty(ExceptionMessage))
+    if (!string.IsNullOrEmpty(ExceptionMessage))
     {
-        <div class="alert-warning">@ExceptionMessage</div>
+        <div class="alert alert-warning text-center">@ExceptionMessage</div>
     }
     else
     {
         <div class="text-center mt-5">
             <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2">Loading farmer details...</p>
+            <p class="mt-2 fw-semibold text-secondary">Loading farmer details...</p>
         </div>
-    }  
+    }
 }
 else
 {
     <div class="container py-5">
-        <div class="row justify-content-center mb-4">
+        <div class="row justify-content-center mb-5">
             <div class="col-lg-6 col-md-8">
-                <div class="card shadow-lg border-0 text-center">
+                <div class="card shadow-lg border-0 text-center rounded-4 hover-shadow transition">
                     <div class="card-body">
                         <div class="position-relative d-inline-block mb-3">
                             <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow"
-                                 style="width: 120px; height: 120px; font-size: 40px; font-weight: bold;">
+                                 style="width: 120px; height: 120px; font-size: 48px; font-weight: bold;">
                                 @FirstLatter
                             </div>
                             <span class="position-absolute bottom-0 end-0 bg-success rounded-circle border border-white"
-                                  style="width: 24px; height: 24px;"></span>
+                                  style="width: 28px; height: 28px;">
+                                <i class="fas fa-check text-white" style="font-size: 14px;"></i>
+                            </span>
                         </div>
 
-                        <h3 class="fw-bold mb-1">@farmer.FarmerName</h3>
-                        <p class="text-muted mb-2">ID: @farmer.FarmerId</p>
-                        <p class="text-muted mb-0"><i class="fas fa-envelope me-2"></i>@farmer.FarmerEmail</p>
-                        <div class="d-flex justify-content-center gap-2 mt-3">
-                            <button class="btn btn-primary">
+                        <h2 class="fw-bold mb-1 text-dark">@farmer.FarmerName</h2>
+                        <p class="text-muted mb-2"><i class="fas fa-id-badge me-1"></i>ID: @farmer.FarmerId</p>
+                        <p class="text-muted mb-3"><i class="fas fa-envelope me-1"></i>@farmer.FarmerEmail</p>
+
+                        <div class="d-flex justify-content-center gap-3 mt-3">
+                            <button class="btn btn-primary btn-sm px-4">
                                 <i class="fas fa-comment-dots me-2"></i> Message
                             </button>
-                            <button class="btn btn-outline-secondary">
+                            <button class="btn btn-outline-secondary btn-sm px-4">
                                 <i class="fas fa-pencil-alt me-2"></i> Edit
                             </button>
                         </div>
@@ -49,29 +52,35 @@ else
 
         <div class="row justify-content-center">
             <div class="col-lg-10">
-                <div class="card shadow-sm border-0">
+                <div class="card shadow-sm border-0 rounded-4 hover-shadow transition">
                     <div class="card-body">
-                        <h5 class="fw-bold border-bottom pb-2 mb-4">Farmer Information</h5>
+                        <h5 class="fw-bold border-bottom pb-3 mb-4 text-primary">
+                            <i class="fas fa-info-circle me-2"></i>Farmer Information
+                        </h5>
 
                         <div class="row mb-4">
-                            <div class="col-md-6">
-                                <small class="text-muted">Full Name</small>
+                            <div class="col-md-6 mb-3">
+                                <small class="text-muted d-flex align-items-center">
+                                    <i class="fas fa-user me-2 text-primary"></i>Full Name
+                                </small>
                                 <p class="fw-semibold mb-0">@farmer.FarmerName</p>
                             </div>
-                            <div class="col-md-6">
-                                <small class="text-muted">Member Since</small>
+                            <div class="col-md-6 mb-3">
+                                <small class="text-muted d-flex align-items-center">
+                                    <i class="fas fa-calendar-alt me-2 text-success"></i>Member Since
+                                </small>
                                 @* <p class="fw-semibold mb-0">@farmer.MemberSince.ToString("MMM dd, yyyy")</p> *@
                             </div>
                         </div>
 
                         <div class="row mb-4">
-                            <div class="col-md-6">
+                            <div class="col-md-6 mb-3">
                                 <small class="text-muted d-flex align-items-center">
                                     <i class="fas fa-phone text-success me-2"></i>Phone
                                 </small>
                                 @* <p class="fw-semibold mb-0">@farmer.Phone</p> *@
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-6 mb-3">
                                 <small class="text-muted d-flex align-items-center">
                                     <i class="fas fa-map-marker-alt text-danger me-2"></i>Address
                                 </small>
@@ -84,11 +93,17 @@ else
         </div>
     </div>
 
-   
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        .hover-shadow:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease-in-out;
+        }
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-
-
+        .transition {
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
 }
 
 @code {

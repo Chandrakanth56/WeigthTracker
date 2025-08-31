@@ -1,0 +1,128 @@
+﻿@page "/add-farmer"
+@using System.Net.Http.Json
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject UserServices users
+@inject ProtectedSessionStorage sessionStorage
+@inject IJSRuntime JS
+
+<h3 class="mb-4">Add New Farmer</h3>
+
+<div class="card shadow-sm rounded-4 p-4" style="max-width: 600px;">
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Farmer Name</label>
+        <input type="text" class="form-control" @bind="FarmerName" placeholder="Enter farmer name" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Farmer Email</label>
+        <input type="email" class="form-control" @bind="FarmerEmail" placeholder="Enter farmer email" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Password</label>
+        <input type="password" class="form-control" @bind="Password" placeholder="Enter password" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Vendor ID</label>
+        <input type="number" class="form-control" @bind="VendorId" placeholder="Enter your vendor ID" />
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <button class="btn btn-success" @onclick="AddFarmerAsync">
+            <i class="fas fa-user-plus me-2"></i> Add Farmer
+        </button>
+        <button class="btn btn-secondary" @onclick="ClearForm">
+            <i class="fas fa-eraser me-2"></i> Clear
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="alert mt-3 @(IsError ? "alert-danger" : "alert-success")">
+            @Message
+        </div>
+    }
+</div>
+
+@code {
+    private string FarmerName { get; set; } = string.Empty;
+    private string FarmerEmail { get; set; } = string.Empty;
+    private string Password { get; set; } = string.Empty;
+    private int VendorId { get; set; }
+
+    private string Message { get; set; } = string.Empty;
+    private bool IsError { get; set; } = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var Id = await sessionStorage.GetAsync<int>("VendorId");
+            if(Id.Success)
+            {
+                VendorId = Id.Value;
+                StateHasChanged();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Vendor ID not found in session storage. Please log in again.");
+            }
+        }
+    }
+
+    private async Task AddFarmerAsync()
+    {
+        Message = string.Empty;
+        IsError = false;
+
+        var farmer = new Farmer
+        {
+            FarmerName = FarmerName,
+            FarmerEmail = FarmerEmail,
+            PassswordHAsh = Password,
+            VendorId = VendorId
+        };
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("https://localhost:7123/api/Vendors/AddFarmer", farmer);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<Farmer>();
+                Message = $"Farmer '{result.FarmerName}' added successfully with ID {result.FarmerId}!";
+                ClearForm();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Message = $"Error: {error}";
+                IsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"Exception: {ex.Message}";
+            IsError = true;
+        }
+    }
+
+    private void ClearForm()
+    {
+        FarmerName = string.Empty;
+        FarmerEmail = string.Empty;
+        Password = string.Empty;
+        VendorId = 0;
+    }
+
+    public class Farmer
+    {
+        public int FarmerId { get; set; }
+        public int VendorId { get; set; }
+        public string FarmerName { get; set; } = string.Empty;
+        public string FarmerEmail { get; set; } = string.Empty;
+        public string PassswordHAsh { get; set; } = string.Empty;
+    }
+}
