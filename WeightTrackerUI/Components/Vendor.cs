@@ -6,5 +6,7 @@
         public string VendorName { get; set; }
         public string VendorEmail { get; set; }
         public string Password { get; set; }
+        public string Token { get; set; }
+        public string Role { get; set; }
     }
 }

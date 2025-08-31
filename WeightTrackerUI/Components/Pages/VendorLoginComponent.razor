@@ -63,6 +63,8 @@
                 users.VendorName = result.VendorName;
                 await sessionStorage.SetAsync("VendorId", result.VendorId);
                 await sessionStorage.SetAsync("VendorName", result.VendorName);
+                await sessionStorage.SetAsync("Token", result.Token);
+                await sessionStorage.SetAsync("Role", result.Role);
                 loginMEssage = $"Wellcome {result.VendorName}";
                 Navigation.NavigateTo("/vendordashboard");
 

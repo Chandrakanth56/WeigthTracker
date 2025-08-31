@@ -10,7 +10,7 @@ using WeigthTrackerApplication.Models;
 
 namespace WeigthTrackerApplication.Controllers
 {
-    //[Authorize]
+   [Authorize(Roles = "Vendor")]
     [Route("api/[controller]")]
     [ApiController]
     public class VendorsController : ControllerBase
@@ -176,7 +176,7 @@ namespace WeigthTrackerApplication.Controllers
                 return StatusCode(500, "An error occurred while fetching weights.");
             }
         }
-
+        [AllowAnonymous]
         [HttpGet("GetFArmerFullDetails")]
         public ActionResult<List<Farmer>> GetFUllDetailsOfFarmer(int FarmerId)
         {

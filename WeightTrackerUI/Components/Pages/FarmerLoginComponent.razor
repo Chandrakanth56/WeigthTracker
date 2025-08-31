@@ -64,6 +64,8 @@
                 users.FarmerName = result.FarmerName;
                 await sessionStorage.SetAsync("FarmerId", result.FarmerId);
                 await sessionStorage.SetAsync("FarmerName", result.FarmerName);
+                await sessionStorage.SetAsync("Token", result.Token);
+                await sessionStorage.SetAsync("Role", result.Role);
                 loginMEssage = $"Wellcome {result.FarmerName}";
                 string token=TokenServices.GenerateToken(result.FarmerId);
                 Navigation.NavigateTo($"/FarmerDashboard/{token}");

@@ -9,7 +9,9 @@ namespace WeightTrackerUI.Components.RequestModel
         public string FarmerName { get; set; }  
         public string FarmerEmail { get; set; } 
         public string PasswordHash { get; set; } 
-        public object Vendor { get; set; }      
+        public object Vendor { get; set; }
+        public string Token { get; set; }
+        public string Role { get; set; }
         public List<Weight> Weights { get; set; } 
     }
 }

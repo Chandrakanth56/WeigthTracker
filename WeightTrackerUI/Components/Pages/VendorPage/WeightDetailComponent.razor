@@ -1,5 +1,7 @@
 ﻿@page "/VendorDashboard/WeightDetails/{token1}/{token2}"
 @inject HttpClient Http
+@inject ProtectedSessionStorage sessionStorage
+@inject NavigationManager Navigation    
 @inject ITokenService TokenServices
 @rendermode InteractiveServer
 
@@ -71,7 +73,7 @@ else
 
 @code {
     [Parameter] public string token1 { get; set; }
-    [Parameter] public string token2 { get; set; } 
+    [Parameter] public string token2 { get; set; }
 
     private int FarmerId;
     private int VendorId;
@@ -85,11 +87,37 @@ else
     private DateOnly? fromDate;
     private DateOnly? toDate;
 
-    protected override async Task OnInitializedAsync()
+    private bool _initialized = false;
+
+    private string Role;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        FarmerId = Convert.ToInt32(TokenServices.GetId(token1));
-        VendorId = Convert.ToInt32(TokenServices.GetId(token2));
-        await LoadWeights();
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+
+            FarmerId = Convert.ToInt32(TokenServices.GetId(token1));
+            VendorId = Convert.ToInt32(TokenServices.GetId(token2));
+            var vendorIdResult = await sessionStorage.GetAsync<int>("VendorId");
+            var tokenResult = await sessionStorage.GetAsync<string>("Token");
+            var roleResult = await sessionStorage.GetAsync<string>("Role");
+
+            if (!vendorIdResult.Success || string.IsNullOrEmpty(tokenResult.Value))
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+            VendorId = vendorIdResult.Value;
+            Role = roleResult.Value;
+
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Value);
+
+            await LoadWeights();
+
+            StateHasChanged();
+        }
     }
 
     private async Task LoadWeights()
@@ -105,8 +133,6 @@ else
                 url += $"&startDate={fromDate:yyyy-MM-dd}&endDate={toDate:yyyy-MM-dd}";
             }
 
-            Console.WriteLine($"Requesting: {url}");
-
             var response = await Http.GetFromJsonAsync<PaginatedResponse<Weight>>(url);
 
             if (response != null)
@@ -114,6 +140,7 @@ else
                 weightList = response.Data;
                 _totalPages = response.TotalPages;
             }
+
             isLoading = false;
         }
         catch (Exception ex)
@@ -122,7 +149,6 @@ else
             isLoading = false;
         }
     }
-
 
     private async Task ApplyFilter()
     {

@@ -70,15 +70,15 @@
                                 <td>@f.FarmerId</td>
                                 <td>@f.FarmerName</td>
                                 <td>@f.VendorId</td>
-                                 <td class="text-end">
-                                        <button class="btn btn-outline-primary btn-sm me-2"
-                                                @onclick="() => ViewDetails(f.FarmerId)">
-                                            <i class="fas fa-id-card me-1"></i> Details
-                                        </button>
-                                        <button class="btn btn-outline-success btn-sm"
-                                                @onclick="() => ViewWeightDetails(f.FarmerId)">
-                                            <i class="fas fa-weight-hanging me-1"></i> Weights
-                                        </button>
+                                <td class="text-end">
+                                    <button class="btn btn-outline-primary btn-sm me-2"
+                                            @onclick="() => ViewDetails(f.FarmerId)">
+                                        <i class="fas fa-id-card me-1"></i> Details
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm"
+                                            @onclick="() => ViewWeightDetails(f.FarmerId)">
+                                        <i class="fas fa-weight-hanging me-1"></i> Weights
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -243,54 +243,56 @@
         farmers?.Where(f => f.FarmerName.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
                             f.FarmerId.ToString().Contains(SearchTerm)) ?? Enumerable.Empty<Farmer>();
 
-    protected override async Task OnInitializedAsync()
-    {
-        VName = users.VendorName;
-        VId = users.VendorId;
-        FirstLatter = string.IsNullOrEmpty(VName) ? "" : VName.Substring(0, 1).ToUpper();
+    private bool _initialized = false;
+    private string Role;
+    private string Token = string.Empty;
 
-        farmers = await GetFarmersAsync();
-        TotalWeights = await GetToTalWeightOfEachFarmer();
-        RecentWeights = await GetRecentWeights();
-    }
-
-    protected override void OnInitialized()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Navigation.LocationChanged += OnLocationChanged;
-    }
-
-    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-    {
-        if (e.Location.Contains("/VendorDashboard"))
+        if (firstRender && !_initialized)
         {
-            farmers = await GetFarmersAsync();
-            RecentWeights = await GetRecentWeights();
+            _initialized = true;
+
+            var storedId = await sessionStorage.GetAsync<int>("VendorId");
+            var storedName = await sessionStorage.GetAsync<string>("VendorName");
+            var tokenResult = await sessionStorage.GetAsync<string>("Token");
+            var roleResult = await sessionStorage.GetAsync<string>("Role");
+
+            if (!storedId.Success || !storedName.Success || string.IsNullOrEmpty(tokenResult.Value))
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            VId = storedId.Value;
+            VName = storedName.Value;
+            Role = roleResult.Value;
+            Token = tokenResult.Value;
+            FirstLatter = string.IsNullOrEmpty(VName) ? "" : VName.Substring(0, 1).ToUpper();
+
+            // Load data explicitly with token
+            farmers = await GetFarmersAsync(Token);
+            TotalWeights = await GetToTalWeightOfEachFarmer(Token);
+            RecentWeights = await GetRecentWeights(Token);
+
             StateHasChanged();
         }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && users.VendorId == 0)
-        {
-            var storedId = await sessionStorage.GetAsync<int>("VendorId");
-            var storedName = await sessionStorage.GetAsync<string>("VendorName");
-
-            if (storedId.Success && storedName.Success)
-            {
-                users.VendorId = storedId.Value;
-                users.VendorName = storedName.Value;
-            }
-        }
-    }
-
-    private async Task<List<Farmer>> GetFarmersAsync()
+    private async Task<List<Farmer>> GetFarmersAsync(string token)
     {
         try
         {
-            var response = await Http.GetFromJsonAsync<List<Farmer>>(
-                $"https://localhost:7123/api/Vendors/GetAllFarmer?VendorId={users.VendorId}");
-            return response ?? new List<Farmer>();
+            var request = new HttpRequestMessage(HttpMethod.Get,
+                $"https://localhost:7123/api/Vendors/GetAllFarmer?VendorId={VId}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<Farmer>>() ?? new List<Farmer>();
+            }
+            return new List<Farmer>();
         }
         catch (Exception ex)
         {
@@ -299,31 +301,47 @@
         }
     }
 
-    private async Task<List<Weight>> GetRecentWeights()
+    private async Task<List<Weight>> GetRecentWeights(string token)
     {
         try
         {
-            RecentWeights = await Http.GetFromJsonAsync<List<Weight>>($"https://localhost:7123/api/Vendors/recent?vendorId={users.VendorId}");
-            return RecentWeights ?? new();
-        }
-        catch (Exception ex)
-        {
-            ExeptionMessage = $"Error: {ex.Message}";
-            return new();
-        }
+            var request = new HttpRequestMessage(HttpMethod.Get,
+                $"https://localhost:7123/api/Vendors/recent?vendorId={VId}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-    }
-    private async Task<List<FarmerDTO>> GetToTalWeightOfEachFarmer()
-    {
-        try
-        {
-            TotalWeights = await Http.GetFromJsonAsync<List<FarmerDTO>>($"https://localhost:7123/api/Vendors/FarmerStats?vendorId={users.VendorId}");
-            return TotalWeights ?? new();
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<Weight>>() ?? new List<Weight>();
+            }
+            return new List<Weight>();
         }
         catch (Exception ex)
         {
             ExeptionMessage = $"Error: {ex.Message}";
-            return new();
+            return new List<Weight>();
+        }
+    }
+
+    private async Task<List<FarmerDTO>> GetToTalWeightOfEachFarmer(string token)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get,
+                $"https://localhost:7123/api/Vendors/FarmerStats?vendorId={VId}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<FarmerDTO>>() ?? new List<FarmerDTO>();
+            }
+            return new List<FarmerDTO>();
+        }
+        catch (Exception ex)
+        {
+            ExeptionMessage = $"Error: {ex.Message}";
+            return new List<FarmerDTO>();
         }
     }
 
@@ -338,33 +356,36 @@
             int? id = null;
 
             if (int.TryParse(Search, out int parsedId))
-            {
                 id = parsedId;
-            }
             else
-            {
                 name = Search;
-            }
+
             var queryParams = new List<string>();
             if (!string.IsNullOrEmpty(name))
                 queryParams.Add($"name={name}");
             if (id.HasValue)
                 queryParams.Add($"id={id.Value}");
-            if (users.VendorId > 0)
-                queryParams.Add($"vendorId={users.VendorId}");
+            if (VId > 0)
+                queryParams.Add($"vendorId={VId}");
 
             var queryString = string.Join("&", queryParams);
             var url = $"https://localhost:7123/api/Vendors/SearchWithLatestWeight?{queryString}";
 
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
 
-            Farmers = await Http.GetFromJsonAsync<List<FarmerResult>>(url) ?? new List<FarmerResult>();
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                Farmers = await response.Content.ReadFromJsonAsync<List<FarmerResult>>() ?? new List<FarmerResult>();
+            }
         }
         catch (HttpRequestException ex)
         {
-
             Console.WriteLine($"Error fetching farmers: {ex.Message}");
         }
     }
+
     private void AddFarmer()
     {
         Navigation.NavigateTo("/add-farmer");
@@ -374,7 +395,7 @@
     {
         users.FarmerId = farmerId;
         var token1 = TokenService.GenerateToken(farmerId);
-        var token2 = TokenService.GenerateToken(users.VendorId);
+        var token2 = TokenService.GenerateToken(VId);
         Navigation.NavigateTo($"/VendorDashboard/WeightDetails/{token1}/{token2}");
     }
 
@@ -390,7 +411,6 @@
         Navigation.NavigateTo("/login", true);
     }
 
-
     public class FarmerDTO
     {
         public int FarmerId { get; set; }
@@ -405,3 +425,6 @@
         public int VendorId { get; set; }
     }
 }
+
+
+

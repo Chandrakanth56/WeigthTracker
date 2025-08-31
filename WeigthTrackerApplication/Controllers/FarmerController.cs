@@ -1,12 +1,14 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
 using System.Data.SqlClient;
 using System.Security.Cryptography.Xml;
 using WeigthTrackerApplication.Models;
-using System.Data;
 
 namespace WeigthTrackerApplication.Controllers
 {
+   // [Authorize(Roles = "Farmer")]
     [Route("api/[controller]")]
     [ApiController]
     public class FarmerController : ControllerBase
@@ -21,12 +23,12 @@ namespace WeigthTrackerApplication.Controllers
             _context = context;
             _configuration = configuration;
         }
-
         [HttpGet("GetTheirDetails")]
         public ActionResult<List<Farmer>> GetFarmer(int farmerID)
         {
             try
             {
+                var FarmerID= User.Claims.FirstOrDefault(c => c.Type == "FarmerId")?.Value;
 
                 if (farmerID <= 0)
                 {

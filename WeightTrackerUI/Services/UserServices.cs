@@ -9,6 +9,8 @@ namespace WeightTrackerUI.Services
         public int FarmerId { get; set; }
         public string FarmerName { get; set; } = string.Empty;
 
+        public string Token { get; set; }
+        public string Role { get; set; }
         public Farmer farmer { get; set; }
 
         public int TotalWeight { get; set; }
