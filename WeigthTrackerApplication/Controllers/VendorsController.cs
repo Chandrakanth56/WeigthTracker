@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using WeigthTrackerApplication.Models;
-using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Data;
-using Microsoft.AspNetCore.Authorization;
+using System.Data.SqlClient;
+using System.Runtime.CompilerServices;
+using WeigthTrackerApplication.Models;
 
 namespace WeigthTrackerApplication.Controllers
 {
@@ -87,26 +90,46 @@ namespace WeigthTrackerApplication.Controllers
             }
         }
 
-        [HttpPost]
-        public ActionResult<List<Farmer>> AddFarmer([FromBody] Farmer model)
+        [HttpPost("AddFarmer")]
+        public ActionResult<Farmer> AddFarmer([FromBody] Farmer model)
         {
             try
             {
-                var farmers = new Farmer()
+                if (model.VendorId <= 0 || string.IsNullOrWhiteSpace(model.FarmerName) ||
+                    string.IsNullOrWhiteSpace(model.FarmerEmail) || string.IsNullOrWhiteSpace(model.PassswordHAsh))
+                {
+                    return BadRequest("VendorId, FarmerName, FarmerEmail, and Password are required.");
+                }
+
+                if (_wightListContext.Farmers.Any(f => f.FarmerEmail == model.FarmerEmail && f.VendorId == model.VendorId))
+                {
+                    return BadRequest("A farmer with this email already exists under your vendor.");
+                }
+
+                var farmer = new Farmer
                 {
                     VendorId = model.VendorId,
                     FarmerName = model.FarmerName,
                     FarmerEmail = model.FarmerEmail,
-                    PassswordHAsh = model.PassswordHAsh,
+                    PassswordHAsh = model.PassswordHAsh
                 };
 
-                _wightListContext.Farmers.Add(farmers);
+                _wightListContext.Farmers.Add(farmer);
                 _wightListContext.SaveChanges();
-                return Ok(farmers);
+
+                var result = new Farmer
+                {
+                    FarmerId = farmer.FarmerId,
+                    VendorId = farmer.VendorId,
+                    FarmerName = farmer.FarmerName,
+                    FarmerEmail = farmer.FarmerEmail
+                };
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while adding new farmer");
+                _logger.LogError(ex, "Error while adding new farmer.");
                 return StatusCode(500, "An error occurred while adding the farmer.");
             }
         }
@@ -187,5 +210,160 @@ namespace WeigthTrackerApplication.Controllers
                 return StatusCode(500, "An error occurred while fetching farmer details.");
             }
         }
+
+        [HttpGet("recent")]
+        public async Task<IActionResult> GetRecentWeights([FromQuery] int vendorId)
+        {
+            try
+            {
+                var recentWeights = await _wightListContext.Weights
+                .Include(w => w.Farmer)
+                .Where(w => w.Farmer.VendorId == vendorId)
+                .OrderByDescending(w => w.Timestamp)
+                .Take(5)
+                .Select(w => new
+                {
+                    w.WeightId,
+                    w.FarmerId,
+                    FarmerName = w.Farmer.FarmerName,
+                    w.Weights,
+                    w.Timestamp
+                })
+                .ToListAsync();
+
+                if (recentWeights == null || recentWeights.Count == 0)
+                    return NotFound(new { Message = "No recent weights found for this vendor." });
+
+                return Ok(recentWeights);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while fetching recent weights for this Vendor");
+                return StatusCode(500, "An error occurred while fetching weight details.");
+            }
+
+        }
+
+        [HttpGet("FarmerStats")]
+        public async Task<IActionResult> GetFarmerStatsByVendor([FromQuery] int vendorId)
+        {
+            try
+            {
+                var farmerStats = await _wightListContext.Farmers
+                    .Where(f => f.VendorId == vendorId)
+                    .Select(f => new
+                    {
+                        f.FarmerId,
+                        LastEntry = _wightListContext.Weights
+                            .Where(w => w.FarmerId == f.FarmerId)
+                            .OrderByDescending(w => w.Timestamp)
+                            .Select(w => w.Timestamp)
+                            .FirstOrDefault(),
+                        TotalWeight = _wightListContext.Weights
+                            .Where(w => w.FarmerId == f.FarmerId)
+                            .Sum(w => (double?)w.Weights) ?? 0
+                    })
+                    .ToListAsync();
+
+                if (farmerStats == null || farmerStats.Count == 0)
+                    return NotFound(new { Message = "No farmers found for this vendor." });
+
+                return Ok(farmerStats);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while fetching Farmer Stats for this vendor");
+                return StatusCode(500, "An error occurred while fetching Farmer stats.");
+            }
+        }
+
+        [HttpGet("SearchWithLatestWeight")]
+        public async Task<IActionResult> SearchFarmersWithLatestWeight(
+    [FromQuery] string? name,
+    [FromQuery] int? id,
+    [FromQuery] int? vendorId)
+        {
+            if (string.IsNullOrEmpty(name) && !id.HasValue && !vendorId.HasValue)
+                return BadRequest("Provide at least one search parameter (name, ID, or vendor).");
+
+            var query = _wightListContext.Farmers.AsQueryable();
+
+            if (!string.IsNullOrEmpty(name))
+                query = query.Where(f => f.FarmerName.Contains(name));
+
+            if (id.HasValue)
+                query = query.Where(f => f.FarmerId == id.Value);
+
+            if (vendorId.HasValue)
+                query = query.Where(f => f.VendorId == vendorId.Value);
+
+            var result = await query
+                .Select(f => new
+                {
+                    f.FarmerId,
+                    f.FarmerName,
+                })
+                .ToListAsync();
+
+            if (!result.Any())
+                return NotFound("No farmers found matching the criteria.");
+
+            return Ok(result);
+        }
+
+        [HttpGet("GetFarmerWeightsByVendor")]
+        public ActionResult<object> GetFarmerWeightsByVendor(
+                                                                int vendorId,
+                                                                int farmerId,
+                                                                int pageNumber = 1,
+                                                                int pageSize = 10,
+                                                                DateOnly? startDate = null,
+                                                                DateOnly? endDate = null)
+                                                                    {
+            try
+            {
+                if (farmerId <= 0)
+                    return BadRequest("Invalid Farmer ID.");
+
+                var query = _wightListContext.Weights
+                    .Where(w => w.FarmerId == farmerId && w.Farmer.VendorId == vendorId);
+
+                if (!query.Any())
+                    return NotFound("No weights found for this farmer under the specified vendor.");
+
+                if (startDate.HasValue && endDate.HasValue)
+                {
+                    DateTime from = startDate.Value.ToDateTime(TimeOnly.MinValue);
+                    DateTime to = endDate.Value.ToDateTime(TimeOnly.MaxValue);
+                    query = query.Where(w => w.Timestamp >= from && w.Timestamp <= to);
+                }
+
+                var totalRecords = query.Count();
+
+                var data = query
+                    .OrderByDescending(w => w.Timestamp)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var response = new
+                {
+                    TotalRecords = totalRecords,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling((double)totalRecords / pageSize),
+                    Data = data
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching weights for farmer by vendor.");
+                return StatusCode(500, "Server error.");
+            }
+        }
+
+
     }
 }
